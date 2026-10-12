@@ -1,0 +1,39 @@
+// Task 8: Pipeline as Code with checkout, build, package and deploy stages.
+// Copy this file to the repository root as "Jenkinsfile" (or point the job's Script Path at it).
+// Needs a Jenkins credential "tomcat-manager" (Username/Password of a Tomcat user with the manager-script role).
+pipeline {
+    agent any
+
+    parameters {
+        // The parameterised environment setting: it is baked into the WAR and shown in the application footer.
+        choice(name: 'DEPLOY_ENV', choices: ['dev', 'staging', 'prod'], description: 'Target environment label')
+        string(name: 'TOMCAT_URL', defaultValue: 'http://localhost:8080', description: 'Tomcat base URL')
+    }
+
+    stages {
+        stage('Checkout') {
+            steps { checkout scm }
+        }
+        stage('Build') {
+            steps { sh 'mvn -B clean test -Dapp.env=${DEPLOY_ENV}' }
+        }
+        stage('Package') {
+            steps {
+                sh 'mvn -B package -DskipTests -Dapp.env=${DEPLOY_ENV}'
+                archiveArtifacts artifacts: 'target/*.war', fingerprint: true
+            }
+        }
+        stage('Deploy') {
+            steps {
+                withCredentials([usernamePassword(credentialsId: 'tomcat-manager', usernameVariable: 'TC_USER', passwordVariable: 'TC_PASS')]) {
+                    sh '''
+                        curl --fail --silent --show-error -u "$TC_USER:$TC_PASS" \
+                             -T target/certificate-portal.war \
+                             "${TOMCAT_URL}/manager/text/deploy?path=/certificate-portal&update=true"
+                    '''
+                }
+                sh 'curl --fail --silent --show-error --retry 15 --retry-delay 3 --retry-connrefused "${TOMCAT_URL}/certificate-portal/health"'
+            }
+        }
+    }
+}
