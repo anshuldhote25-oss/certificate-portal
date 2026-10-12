@@ -1,0 +1,35 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title><c:out value="${pageTitle}"/> | Certificate Portal</title>
+  <link rel="stylesheet" href="${pageContext.request.contextPath}/css/style.css">
+</head>
+<body>
+<c:set var="ctx" value="${pageContext.request.contextPath}"/>
+<header class="topbar">
+  <a class="brand" href="${ctx}/dashboard">Certificate Portal</a>
+  <c:if test="${not empty sessionScope.user}">
+    <nav>
+      <a href="${ctx}/dashboard" data-testid="nav-dashboard">Dashboard</a>
+      <a href="${ctx}/certificates" data-testid="nav-certificates">Certificates</a>
+      <c:if test="${sessionScope.user.role == 'OPERATOR' || sessionScope.user.role == 'ADMIN'}">
+        <a href="${ctx}/certificates/new" data-testid="nav-new">New certificate</a>
+      </c:if>
+    </nav>
+    <div class="userbox">
+      <span data-testid="current-user"><c:out value="${sessionScope.user.fullName}"/></span>
+      <span class="role" data-testid="current-role"><c:out value="${sessionScope.user.role.label}"/></span>
+      <form method="post" action="${ctx}/logout">
+        <input type="hidden" name="_csrf" value="${sessionScope.csrf}">
+        <button type="submit" class="link" data-testid="logout">Log out</button>
+      </form>
+    </div>
+  </c:if>
+</header>
+<main>
+<c:if test="${not empty sessionScope.flash}">
+  <div class="flash" data-testid="flash"><c:out value="${sessionScope.flash}"/></div>
+  <c:remove var="flash" scope="session"/>
+</c:if>
