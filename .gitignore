@@ -1,0 +1,26 @@
+# Build output
+target/
+*.war
+*.class
+
+# H2 database files and local data
+data/
+*.mv.db
+*.trace.db
+
+# IDEs
+.idea/
+*.iml
+.vscode/
+.classpath
+.project
+.settings/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Evidence logs are kept, secrets never
+*.pem
+*.key
+.env
