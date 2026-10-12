@@ -2,9 +2,11 @@ package com.certportal.web;
 
 import com.certportal.dao.CertificateDao;
 import com.certportal.model.Certificate;
+import com.certportal.model.Status;
 import com.certportal.model.User;
 import com.certportal.service.Validator;
 import com.certportal.service.Workflow;
+import com.certportal.service.Workflow.Action;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.annotation.WebServlet;
 import jakarta.servlet.http.HttpServlet;
@@ -16,12 +18,15 @@ import java.sql.SQLException;
 import java.util.Map;
 
 /**
- * Certificate pages (feature 1: create, view, list).
+ * Handles every certificate page:
  * <pre>
- * GET  /certificates            list
- * GET  /certificates/new        blank form
- * POST /certificates            create
- * GET  /certificates/{id}       view
+ * GET  /certificates                 list + search (q, status)
+ * GET  /certificates/new             blank form
+ * POST /certificates                 create
+ * GET  /certificates/{id}            view
+ * GET  /certificates/{id}/edit       edit form
+ * POST /certificates/{id}            update
+ * POST /certificates/{id}/{action}   submit | approve | reject | issue
  * </pre>
  */
 @WebServlet("/certificates/*")
@@ -43,6 +48,8 @@ public class CertificateServlet extends HttpServlet {
                 showNewForm(req, resp);
             } else if (parts.length == 1 && isNumber(parts[0])) {
                 showOne(req, resp, Long.parseLong(parts[0]));
+            } else if (parts.length == 2 && isNumber(parts[0]) && parts[1].equals("edit")) {
+                showEditForm(req, resp, Long.parseLong(parts[0]));
             } else {
                 resp.sendError(HttpServletResponse.SC_NOT_FOUND, "Page not found.");
             }
@@ -57,6 +64,10 @@ public class CertificateServlet extends HttpServlet {
         try {
             if (parts.length == 0) {
                 create(req, resp);
+            } else if (parts.length == 1 && isNumber(parts[0])) {
+                update(req, resp, Long.parseLong(parts[0]));
+            } else if (parts.length == 2 && isNumber(parts[0])) {
+                transition(req, resp, Long.parseLong(parts[0]), parts[1]);
             } else {
                 resp.sendError(HttpServletResponse.SC_NOT_FOUND, "Page not found.");
             }
@@ -69,7 +80,13 @@ public class CertificateServlet extends HttpServlet {
 
     private void showList(HttpServletRequest req, HttpServletResponse resp)
             throws SQLException, ServletException, IOException {
-        req.setAttribute("certificates", dao.search(null, null));
+        String q = trim(req.getParameter("q"));
+        Status status = Status.fromText(req.getParameter("status"));
+        req.setAttribute("certificates", dao.search(q, status));
+        req.setAttribute("q", q);
+        req.setAttribute("selectedStatus", status == null ? "" : status.name());
+        req.setAttribute("statuses", Status.values());
+        req.setAttribute("canCreate", Workflow.canCreate(user(req).getRole()));
         req.getRequestDispatcher(LIST).forward(req, resp);
     }
 
@@ -85,6 +102,23 @@ public class CertificateServlet extends HttpServlet {
         req.getRequestDispatcher(FORM).forward(req, resp);
     }
 
+    private void showEditForm(HttpServletRequest req, HttpServletResponse resp, long id)
+            throws SQLException, ServletException, IOException {
+        Certificate cert = dao.findById(id);
+        if (cert == null) {
+            resp.sendError(HttpServletResponse.SC_NOT_FOUND, "Certificate not found.");
+            return;
+        }
+        if (!Workflow.canEdit(user(req).getRole(), cert.getStatus())) {
+            resp.sendError(HttpServletResponse.SC_FORBIDDEN, "This record cannot be edited by your role or in its current status.");
+            return;
+        }
+        req.setAttribute("certificate", cert);
+        req.setAttribute("formAction", req.getContextPath() + "/certificates/" + id);
+        req.setAttribute("formTitle", "Edit certificate " + cert.getCertNo());
+        req.getRequestDispatcher(FORM).forward(req, resp);
+    }
+
     private void showOne(HttpServletRequest req, HttpServletResponse resp, long id)
             throws SQLException, ServletException, IOException {
         Certificate cert = dao.findById(id);
@@ -92,7 +126,10 @@ public class CertificateServlet extends HttpServlet {
             resp.sendError(HttpServletResponse.SC_NOT_FOUND, "Certificate not found.");
             return;
         }
+        User user = user(req);
         req.setAttribute("certificate", cert);
+        req.setAttribute("actions", Workflow.availableActions(user.getRole(), cert.getStatus()));
+        req.setAttribute("canEdit", Workflow.canEdit(user.getRole(), cert.getStatus()));
         req.getRequestDispatcher(VIEW).forward(req, resp);
     }
 
@@ -106,8 +143,7 @@ public class CertificateServlet extends HttpServlet {
             return;
         }
         Certificate cert = readForm(req);
-        Map<String, String> errors = Validator.validate(req.getParameter("recipientName"),
-                req.getParameter("recipientEmail"), req.getParameter("course"), req.getParameter("issueDate"));
+        Map<String, String> errors = validate(req);
         if (!errors.isEmpty()) {
             req.setAttribute("errors", errors);
             req.setAttribute("certificate", cert);
@@ -117,7 +153,64 @@ public class CertificateServlet extends HttpServlet {
             return;
         }
         long id = dao.create(cert, user.getUsername());
-        req.getSession().setAttribute("flash", "Certificate created as a draft.");
+        flash(req, "Certificate created as a draft.");
+        resp.sendRedirect(req.getContextPath() + "/certificates/" + id);
+    }
+
+    private void update(HttpServletRequest req, HttpServletResponse resp, long id)
+            throws SQLException, ServletException, IOException {
+        User user = user(req);
+        Certificate existing = dao.findById(id);
+        if (existing == null) {
+            resp.sendError(HttpServletResponse.SC_NOT_FOUND, "Certificate not found.");
+            return;
+        }
+        if (!Workflow.canEdit(user.getRole(), existing.getStatus())) {
+            resp.sendError(HttpServletResponse.SC_FORBIDDEN, "This record cannot be edited by your role or in its current status.");
+            return;
+        }
+        Certificate cert = readForm(req);
+        cert.setId(id);
+        cert.setCertNo(existing.getCertNo());
+        Map<String, String> errors = validate(req);
+        if (!errors.isEmpty()) {
+            req.setAttribute("errors", errors);
+            req.setAttribute("certificate", cert);
+            req.setAttribute("formAction", req.getContextPath() + "/certificates/" + id);
+            req.setAttribute("formTitle", "Edit certificate " + existing.getCertNo());
+            req.getRequestDispatcher(FORM).forward(req, resp);
+            return;
+        }
+        dao.update(cert, user.getUsername());
+        flash(req, "Certificate updated.");
+        resp.sendRedirect(req.getContextPath() + "/certificates/" + id);
+    }
+
+    private void transition(HttpServletRequest req, HttpServletResponse resp, long id, String actionPath)
+            throws SQLException, IOException {
+        Action action = Action.fromPath(actionPath);
+        if (action == null) {
+            resp.sendError(HttpServletResponse.SC_NOT_FOUND, "Unknown action.");
+            return;
+        }
+        User user = user(req);
+        Certificate cert = dao.findById(id);
+        if (cert == null) {
+            resp.sendError(HttpServletResponse.SC_NOT_FOUND, "Certificate not found.");
+            return;
+        }
+        if (!Workflow.roleMayPerform(user.getRole(), action)) {
+            resp.sendError(HttpServletResponse.SC_FORBIDDEN, "Your role is not allowed to " + action.getPath() + " certificates.");
+            return;
+        }
+        Status next = Workflow.next(cert.getStatus(), action).orElse(null);
+        if (next == null) {
+            resp.sendError(HttpServletResponse.SC_CONFLICT,
+                    "Cannot " + action.getPath() + " a certificate that is " + cert.getStatus().getLabel().toLowerCase() + ".");
+            return;
+        }
+        dao.updateStatus(id, next, user.getUsername());
+        flash(req, "Status changed to " + next.getLabel() + ".");
         resp.sendRedirect(req.getContextPath() + "/certificates/" + id);
     }
 
@@ -133,8 +226,17 @@ public class CertificateServlet extends HttpServlet {
         return cert;
     }
 
+    private Map<String, String> validate(HttpServletRequest req) {
+        return Validator.validate(req.getParameter("recipientName"), req.getParameter("recipientEmail"),
+                req.getParameter("course"), req.getParameter("issueDate"));
+    }
+
     private static User user(HttpServletRequest req) {
         return (User) req.getSession().getAttribute("user");
+    }
+
+    private static void flash(HttpServletRequest req, String message) {
+        req.getSession().setAttribute("flash", message);
     }
 
     private static String[] pathParts(HttpServletRequest req) {

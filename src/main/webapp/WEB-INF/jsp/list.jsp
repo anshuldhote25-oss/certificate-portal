@@ -4,11 +4,24 @@
 <%@ include file="/WEB-INF/jsp/header.jspf" %>
 <h1>Certificates</h1>
 
+<form method="get" action="${ctx}/certificates" class="search">
+  <input type="text" name="q" value="<c:out value='${q}'/>" placeholder="Search name, number or course"
+         aria-label="Search" data-testid="search-input">
+  <select name="status" aria-label="Status" data-testid="status-filter">
+    <option value="">All statuses</option>
+    <c:forEach var="s" items="${statuses}">
+      <option value="${s}" ${selectedStatus == s.name() ? 'selected' : ''}><c:out value="${s.label}"/></option>
+    </c:forEach>
+  </select>
+  <button type="submit" class="primary" data-testid="search-submit">Search</button>
+  <a href="${ctx}/certificates" class="button" data-testid="search-clear">Clear</a>
+</form>
+
 <p class="muted" data-testid="result-count"><c:out value="${certificates.size()}"/> record(s) found</p>
 
 <c:choose>
   <c:when test="${empty certificates}">
-    <div class="card empty" data-testid="empty-state">No certificates yet.</div>
+    <div class="card empty" data-testid="empty-state">No certificates match your search.</div>
   </c:when>
   <c:otherwise>
     <table data-testid="cert-table">
