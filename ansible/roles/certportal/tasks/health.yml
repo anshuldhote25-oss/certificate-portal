@@ -1,0 +1,15 @@
+---
+- name: Wait for the application health endpoint
+  ansible.builtin.uri:
+    url: "{{ health_url }}"
+    return_content: true
+    status_code: 200
+  register: health
+  until: (health.status | default(0)) == 200 and ('"status":"UP"' in (health.content | default('')))
+  retries: "{{ health_retries }}"
+  delay: "{{ health_delay }}"
+  changed_when: false
+
+- name: Report the health result
+  ansible.builtin.debug:
+    msg: "Health check passed: {{ health.content }}"

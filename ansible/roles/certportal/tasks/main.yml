@@ -1,0 +1,12 @@
+---
+- name: Provision server prerequisites
+  ansible.builtin.import_tasks: provision.yml
+  tags: [provision]
+
+- name: Deploy the release
+  ansible.builtin.import_tasks: deploy.yml
+  tags: [deploy]
+
+- name: Verify the application is healthy
+  ansible.builtin.import_tasks: health.yml
+  tags: [health, deploy]

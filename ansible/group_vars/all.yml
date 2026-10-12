@@ -1,0 +1,30 @@
+---
+# ---- application ----
+app_name: certificate-portal
+app_version: "1.0.0"          # becomes the release folder name; bump it for every new release
+app_env: staging              # label shown in the application footer
+# WAR file on the machine that runs ansible-playbook (build it first with: mvn clean package -DskipTests)
+artifact_src: "{{ playbook_dir }}/../target/certificate-portal.war"
+
+# ---- server prerequisites (Ubuntu 24.04 / Debian with systemd) ----
+required_packages:
+  - openjdk-17-jdk-headless
+  - tomcat10
+  - curl
+tomcat_service: tomcat10
+tomcat_user: tomcat
+tomcat_group: tomcat
+tomcat_webapps: /var/lib/tomcat10/webapps
+tomcat_port: 8080
+
+# ---- folders and users ----
+app_user: certportal                       # owns the release archive
+app_base: /opt/certportal
+releases_dir: "{{ app_base }}/releases"
+data_dir: /var/lib/certportal              # H2 database files, writable by Tomcat
+keep_releases: 5
+
+# ---- health check ----
+health_url: "http://localhost:{{ tomcat_port }}/{{ app_name }}/health"
+health_retries: 30
+health_delay: 3
