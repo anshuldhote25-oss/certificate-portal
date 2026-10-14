@@ -8,7 +8,6 @@ pipeline {
         choice(name: 'DEPLOY_ENV', choices: ['dev', 'staging', 'prod'], description: 'Target environment label')
         string(name: 'TOMCAT_URL', defaultValue: 'http://localhost:8080', description: 'Tomcat base URL')
         booleanParam(name: 'RUN_UNIT_TESTS', defaultValue: true, description: 'Untick only for the Task 10 demo so the Selenium stage can fail on its own')
-        booleanParam(name: 'RUN_UNIT_TESTS', defaultValue: true, description: 'Untick only for the Task 10 demo so the Selenium stage can fail on its own')
     }
 
     stages {
@@ -16,7 +15,6 @@ pipeline {
             steps { checkout scm }
         }
         stage('Unit tests') {
-            when { expression { params.RUN_UNIT_TESTS } }
             when { expression { params.RUN_UNIT_TESTS } }
             steps { sh 'mvn -B clean test -Dapp.env=${DEPLOY_ENV}' }
             post { always { junit testResults: 'target/surefire-reports/*.xml', allowEmptyResults: true } }
