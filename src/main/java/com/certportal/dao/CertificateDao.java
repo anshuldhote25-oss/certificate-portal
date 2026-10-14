@@ -74,7 +74,7 @@ public class CertificateDao {
         List<Object> params = new ArrayList<>();
         if (query != null && !query.isBlank()) {
             String like = "%" + query.trim().toLowerCase() + "%";
-            sql.append(" AND (LOWER(recipient_name) LIKE ? OR LOWER(cert_no) LIKE ? OR LOWER(course) LIKE ?)");
+            sql.append(" AND (recipient_name LIKE ? OR LOWER(cert_no) LIKE ? OR LOWER(course) LIKE ?)");
             params.add(like);
             params.add(like);
             params.add(like);
