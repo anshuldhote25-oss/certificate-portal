@@ -22,10 +22,10 @@ pipeline {
         string(name: 'TOMCAT_URL', defaultValue: 'http://localhost:8080',
                description: 'Base URL of the Tomcat server that receives the WAR')
         booleanParam(name: 'RUN_SELENIUM', defaultValue: true, description: 'Run the Selenium suite before deploying')
-        string(name: 'DOCKER_REPO', defaultValue: 'yourdockerhubuser/certificate-portal',
+        string(name: 'DOCKER_REPO', defaultValue: 'sundays25/certificate-portal',
                description: 'Image repository, for example myuser/certificate-portal or localhost:5000/certificate-portal')
         booleanParam(name: 'PUSH_IMAGE', defaultValue: true, description: 'Push the image to the registry')
-        booleanParam(name: 'REGISTRY_LOGIN', defaultValue: true, description: 'Log in with the dockerhub credential before pushing (turn off for an open local registry)')
+        booleanParam(name: 'REGISTRY_LOGIN', defaultValue: false, description: 'Log in with the dockerhub credential before pushing (turn off for an open local registry)')
         string(name: 'CONTAINER_PORT', defaultValue: '8081', description: 'Host port for the freshly deployed container')
     }
 
