@@ -1,0 +1,51 @@
+// Task 10: continuous testing. Selenium runs before deployment; a failing test stops the pipeline.
+// Copy this file to the repository root as "Jenkinsfile" (or point the job's Script Path at it).
+// Needs Google Chrome/Chromium on the Jenkins agent and the "tomcat-manager" credential.
+pipeline {
+    agent any
+
+    parameters {
+        choice(name: 'DEPLOY_ENV', choices: ['dev', 'staging', 'prod'], description: 'Target environment label')
+        string(name: 'TOMCAT_URL', defaultValue: 'http://localhost:8080', description: 'Tomcat base URL')
+    }
+
+    stages {
+        stage('Checkout') {
+            steps { checkout scm }
+        }
+        stage('Unit tests') {
+            steps { sh 'mvn -B clean test -Dapp.env=${DEPLOY_ENV}' }
+            post { always { junit testResults: 'target/surefire-reports/*.xml', allowEmptyResults: true } }
+        }
+        stage('Package') {
+            steps {
+                sh 'mvn -B package -DskipTests -Dapp.env=${DEPLOY_ENV}'
+                archiveArtifacts artifacts: 'target/*.war', fingerprint: true
+            }
+        }
+        stage('Selenium tests') {
+            steps {
+                sh 'mvn -B failsafe:integration-test failsafe:verify'
+            }
+            post {
+                always {
+                    junit testResults: 'target/failsafe-reports/*.xml', allowEmptyResults: true
+                    archiveArtifacts artifacts: 'target/screenshots/**', allowEmptyArchive: true
+                }
+            }
+        }
+        stage('Deploy') {
+            // Only reached when every test above passed.
+            steps {
+                withCredentials([usernamePassword(credentialsId: 'tomcat-manager', usernameVariable: 'TC_USER', passwordVariable: 'TC_PASS')]) {
+                    sh '''
+                        curl --fail --silent --show-error -u "$TC_USER:$TC_PASS" \
+                             -T target/certificate-portal.war \
+                             "${TOMCAT_URL}/manager/text/deploy?path=/certificate-portal&update=true"
+                    '''
+                }
+                sh 'curl --fail --silent --show-error --retry 15 --retry-delay 3 --retry-connrefused "${TOMCAT_URL}/certificate-portal/health"'
+            }
+        }
+    }
+}

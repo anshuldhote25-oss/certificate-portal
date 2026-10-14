@@ -1,0 +1,10 @@
+---
+# Provision the node and deploy the portal.  Safe to run repeatedly (idempotent).
+#   ansible-playbook site.yml
+#   ansible-playbook site.yml -e app_version=1.0.1      # deploy a new release
+#   ansible-playbook site.yml --check --diff            # dry run
+- name: Configure the Certificate Portal node
+  hosts: portal
+  become: true
+  roles:
+    - certportal

@@ -1,0 +1,64 @@
+---
+- name: Read the previous release marker
+  ansible.builtin.slurp:
+    src: "{{ app_base }}/previous_version"
+  register: previous_marker
+  failed_when: false
+  when: rollback_to is not defined
+
+- name: Read the live release marker
+  ansible.builtin.slurp:
+    src: "{{ app_base }}/current_version"
+  register: live_marker
+  failed_when: false
+
+- name: Decide the release to restore
+  ansible.builtin.set_fact:
+    target_release: >-
+      {{ rollback_to if rollback_to is defined
+         else ((previous_marker.content | b64decode | trim) if previous_marker.content is defined else '') }}
+    live_release: "{{ (live_marker.content | b64decode | trim) if live_marker.content is defined else '' }}"
+
+- name: Stop when there is nothing to roll back to
+  ansible.builtin.fail:
+    msg: "No previous release is recorded. Pass -e rollback_to=<version> to choose one."
+  when: target_release == ''
+
+- name: Check that the release is in the archive
+  ansible.builtin.stat:
+    path: "{{ releases_dir }}/{{ target_release }}/{{ app_name }}.war"
+  register: target_war
+
+- name: Stop when the release has been removed
+  ansible.builtin.fail:
+    msg: "Release {{ target_release }} is not in {{ releases_dir }}."
+  when: not target_war.stat.exists
+
+- name: Put the previous WAR back where Tomcat deploys it
+  ansible.builtin.copy:
+    src: "{{ releases_dir }}/{{ target_release }}/{{ app_name }}.war"
+    dest: "{{ tomcat_webapps }}/{{ app_name }}.war"
+    remote_src: true
+    owner: "{{ tomcat_user }}"
+    group: "{{ tomcat_group }}"
+    mode: "0640"
+
+- name: Record the release that was rolled away from
+  ansible.builtin.copy:
+    content: "{{ live_release }}\n"
+    dest: "{{ app_base }}/previous_version"
+    owner: "{{ app_user }}"
+    group: "{{ app_user }}"
+    mode: "0644"
+  when: live_release != '' and live_release != target_release
+
+- name: Mark the restored release as live
+  ansible.builtin.copy:
+    content: "{{ target_release }}\n"
+    dest: "{{ app_base }}/current_version"
+    owner: "{{ app_user }}"
+    group: "{{ app_user }}"
+    mode: "0644"
+
+- name: Verify the application after the rollback
+  ansible.builtin.import_tasks: health.yml

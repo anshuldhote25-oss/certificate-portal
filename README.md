@@ -72,3 +72,4 @@ scripts/           helper scripts (health check, docker lifecycle, defect demo)
 ## Workflow
 See [docs/BRANCHING.md](docs/BRANCHING.md) for branch names and pull request rules and
 [docs/RUN-GUIDE.md](docs/RUN-GUIDE.md) for the step-by-step instructions for every course task.
+
