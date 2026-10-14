@@ -30,7 +30,7 @@ public final class Validator {
 
         String c = course == null ? "" : course.trim();
         if (c.isEmpty() || c.length() > 120) {
-            errors.put("course", "Course is required (maximum 120 characters).");
+            errors.put("course", "Course is required and must be at most 120 characters.");
         }
 
         LocalDate date = parseDate(issueDate);

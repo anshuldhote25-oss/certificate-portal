@@ -1,0 +1,15 @@
+* 8d87fa8 (HEAD -> develop, origin/develop) Resolve footer wording conflict
+*   2f8b8c3 Resolve footer wording conflict
+|\  
+| * ad1beef (origin/bugfix/footer-wording-b, bugfix/footer-wording-b) Footer: say Build instead of Version
+* | 9b0722d (origin/bugfix/footer-wording-a, bugfix/footer-wording-a) Footer: say Release instead of Version
+|/  
+*   5cf9e25 Merge pull request #3 from anshuldhote25-oss/feature/devops-automation
+|\  
+| * 0118e0d (origin/feature/devops-automation, feature/devops-automation) Task 13-14: Ansible evidence logs and ansible.cfg fix
+| * 99812db Task 13-14: Ansible evidence logs and ansible.cfg fix
+| * 0266d37 Retry health checks on connection reset while Tomcat starts
+| * 7765c6f Jenkinsfile: default Docker repo sundays25, registry login off by default
+| * 95a928f Selenium: submit by script when Chrome drops a click
+| * bbaaed8 Trigger Jenkins
+| * 97eacfc Stabilise Selenium tests on macOS

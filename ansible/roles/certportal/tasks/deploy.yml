@@ -1,0 +1,79 @@
+---
+- name: Check that the WAR exists on the control node
+  ansible.builtin.stat:
+    path: "{{ artifact_src }}"
+  delegate_to: localhost
+  become: false
+  register: war_file
+
+- name: Stop if the WAR has not been built
+  ansible.builtin.fail:
+    msg: "WAR not found at {{ artifact_src }}. Run 'mvn clean package -DskipTests' first or pass -e artifact_src=PATH."
+  when: not war_file.stat.exists
+
+- name: Create this release's folder
+  ansible.builtin.file:
+    path: "{{ releases_dir }}/{{ app_version }}"
+    state: directory
+    owner: "{{ app_user }}"
+    group: "{{ app_user }}"
+    mode: "0755"
+
+- name: Store the WAR in the release archive
+  ansible.builtin.copy:
+    src: "{{ artifact_src }}"
+    dest: "{{ releases_dir }}/{{ app_version }}/{{ app_name }}.war"
+    owner: "{{ app_user }}"
+    group: "{{ app_user }}"
+    mode: "0644"
+
+- name: Read the marker of the release that is live now
+  ansible.builtin.slurp:
+    src: "{{ app_base }}/current_version"
+  register: current_marker
+  failed_when: false
+
+- name: Work out which release is live now
+  ansible.builtin.set_fact:
+    live_release: "{{ (current_marker.content | b64decode | trim) if current_marker.content is defined else '' }}"
+
+- name: Remember the previous release so it can be restored
+  ansible.builtin.copy:
+    content: "{{ live_release }}\n"
+    dest: "{{ app_base }}/previous_version"
+    owner: "{{ app_user }}"
+    group: "{{ app_user }}"
+    mode: "0644"
+  when: live_release != '' and live_release != app_version
+
+- name: Put the WAR where Tomcat deploys it
+  ansible.builtin.copy:
+    src: "{{ releases_dir }}/{{ app_version }}/{{ app_name }}.war"
+    dest: "{{ tomcat_webapps }}/{{ app_name }}.war"
+    remote_src: true
+    owner: "{{ tomcat_user }}"
+    group: "{{ tomcat_group }}"
+    mode: "0640"
+
+- name: Mark this release as the live one
+  ansible.builtin.copy:
+    content: "{{ app_version }}\n"
+    dest: "{{ app_base }}/current_version"
+    owner: "{{ app_user }}"
+    group: "{{ app_user }}"
+    mode: "0644"
+
+- name: Find old releases beyond the retention limit
+  ansible.builtin.find:
+    paths: "{{ releases_dir }}"
+    file_type: directory
+  register: release_dirs
+
+- name: Delete the oldest releases (never the live or previous one)
+  ansible.builtin.file:
+    path: "{{ item.path }}"
+    state: absent
+  loop: "{{ (release_dirs.files | sort(attribute='mtime', reverse=true))[keep_releases:] }}"
+  loop_control:
+    label: "{{ item.path }}"
+  when: (item.path | basename) not in [app_version, live_release]

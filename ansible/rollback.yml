@@ -1,0 +1,12 @@
+---
+# Return to the previous stable release (or a specific one):
+#   ansible-playbook rollback.yml
+#   ansible-playbook rollback.yml -e rollback_to=1.0.0
+- name: Roll the Certificate Portal back
+  hosts: portal
+  become: true
+  tasks:
+    - name: Run the rollback tasks
+      ansible.builtin.include_role:
+        name: certportal
+        tasks_from: rollback.yml
