@@ -40,7 +40,6 @@ abstract class BaseIT {
 
     static String baseUrl;
     protected WebDriver driver;
-    protected WebDriverWait wait;
 
     @BeforeAll
     static void startApplication() throws Exception {
@@ -59,7 +58,6 @@ abstract class BaseIT {
             options.setBinary(binary);
         }
         driver = new ChromeDriver(options);
-        wait = new WebDriverWait(driver, Duration.ofSeconds(10));
     }
 
     @AfterEach
@@ -95,9 +93,19 @@ abstract class BaseIT {
         return By.cssSelector("[data-testid='" + id + "']");
     }
 
+    /**
+     * A 10-second wait that keeps trying when Chrome reports a passing error while a page is being
+     * replaced (stale or "node does not belong to the document" errors).
+     */
+    private WebDriverWait waiter() {
+        WebDriverWait w = new WebDriverWait(driver, Duration.ofSeconds(10));
+        w.ignoring(WebDriverException.class);
+        return w;
+    }
+
     /** Waits (up to 10 s) until the element is on the page and visible, then returns it. */
     protected WebElement visible(By locator) {
-        return wait.until(ExpectedConditions.visibilityOfElementLocated(locator));
+        return waiter().until(ExpectedConditions.visibilityOfElementLocated(locator));
     }
 
     protected String text(String id) {
@@ -116,25 +124,42 @@ abstract class BaseIT {
     }
 
     /**
-     * Clicks an element that navigates (a link or a submit button) and waits until the browser has left
-     * the old page and finished loading the next one. Without this wait the next step can run while the
-     * form post is still in flight, which makes tests fail at random.
+     * Clicks an element that navigates (a link or a submit button) and waits until the browser is showing
+     * the next page, fully loaded. Without this wait the next step can run while the form post is still in
+     * flight, which makes tests fail at random.
+     *
+     * The old page is marked before the click; a freshly loaded page does not carry the mark. This does not
+     * rely on stale-element errors, which Chrome does not report reliably.
      */
     protected void click(String id) {
-        WebElement element = wait.until(ExpectedConditions.elementToBeClickable(testId(id)));
+        WebElement element = waiter().until(ExpectedConditions.elementToBeClickable(testId(id)));
+        script("document.documentElement.setAttribute('data-nav-mark', '1')");
         element.click();
-        wait.until(ExpectedConditions.stalenessOf(element));
+        waiter().withMessage("the page did not change after clicking '" + id + "'")
+                .until(d -> pageIsNew());
         waitForPageLoad();
     }
 
+    private boolean pageIsNew() {
+        try {
+            return script("return document.documentElement.getAttribute('data-nav-mark')") == null;
+        } catch (WebDriverException e) {
+            return false;   // the old page is being torn down; ask again
+        }
+    }
+
     protected void waitForPageLoad() {
-        wait.until(d -> {
+        waiter().until(d -> {
             try {
-                return "complete".equals(((JavascriptExecutor) d).executeScript("return document.readyState"));
+                return "complete".equals(script("return document.readyState"));
             } catch (WebDriverException e) {
                 return false;   // page is switching documents; try again
             }
         });
+    }
+
+    private Object script(String javascript) {
+        return ((JavascriptExecutor) driver).executeScript(javascript);
     }
 
     protected static String uniqueName(String prefix) {
@@ -149,7 +174,7 @@ abstract class BaseIT {
         type(By.id("username"), username);
         type(By.id("password"), username + "123");
         click("login-submit");
-        wait.until(ExpectedConditions.urlContains("/dashboard"));
+        waiter().until(ExpectedConditions.urlContains("/dashboard"));
     }
 
     /** Creates a draft certificate (user must be logged in as operator/admin) and returns the view-page URL. */
@@ -161,7 +186,7 @@ abstract class BaseIT {
         type(By.id("issueDate"), java.time.LocalDate.now().toString());
         type(By.id("remarks"), "Created by Selenium");
         click("save");
-        wait.until(ExpectedConditions.urlMatches(".*/certificates/\\d+$"));
+        waiter().until(ExpectedConditions.urlMatches(".*/certificates/\\d+$"));
         return driver.getCurrentUrl();
     }
 }
