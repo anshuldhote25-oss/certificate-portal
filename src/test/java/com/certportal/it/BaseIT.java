@@ -19,6 +19,7 @@ import org.openqa.selenium.By;
 import org.openqa.selenium.JavascriptExecutor;
 import org.openqa.selenium.OutputType;
 import org.openqa.selenium.TakesScreenshot;
+import org.openqa.selenium.TimeoutException;
 import org.openqa.selenium.WebDriver;
 import org.openqa.selenium.WebDriverException;
 import org.openqa.selenium.WebElement;
@@ -171,9 +172,56 @@ abstract class BaseIT {
         assertEquals(value, field.getAttribute("value"), "Could not type into " + locator);
     }
 
-    /** Clicks an element. What the click leads to is checked by the caller with awaitUrl / awaitText / visible. */
+    /**
+     * Clicks a link or submit button and waits until the browser shows the next page.
+     *
+     * Chrome occasionally drops a click completely: the button is visible and enabled, the click is accepted,
+     * but nothing is sent to the server (the server log proves it). So the page is marked before the click.
+     * A freshly loaded page does not carry the mark. If the mark is still there after 5 seconds the click was
+     * lost, and the button is activated by script instead (submit its form or follow its link), which does not
+     * depend on the mouse. What the next page should show is checked by the caller (awaitUrl / awaitText / visible).
+     */
     protected void click(String id) {
-        waiter().until(ExpectedConditions.elementToBeClickable(testId(id))).click();
+        WebElement element = waiter().until(ExpectedConditions.elementToBeClickable(testId(id)));
+        script("document.documentElement.setAttribute('data-nav-mark', '1')");
+        element.click();
+
+        if (!pageChangedWithin(5)) {
+            System.out.println("[Fallback] the click on '" + id + "' was dropped by Chrome; activating it by script");
+            try {
+                ((JavascriptExecutor) driver).executeScript(
+                        "var e = arguments[0];"
+                        + "if (e.form) { if (e.form.requestSubmit) { e.form.requestSubmit(e.type === 'submit' ? e : undefined); } else { e.form.submit(); } }"
+                        + "else if (e.href) { window.location.href = e.href; }"
+                        + "else { e.click(); }", element);
+            } catch (WebDriverException e) {
+                // the page changed while we were deciding, which is what we wanted
+            }
+        }
+        waiter().withMessage("the page did not change after clicking '" + id + "'").until(d -> pageIsNew());
+        waitForPageLoad();
+    }
+
+    private boolean pageChangedWithin(int seconds) {
+        try {
+            new WebDriverWait(driver, Duration.ofSeconds(seconds)).until(d -> pageIsNew());
+            return true;
+        } catch (TimeoutException e) {
+            return false;
+        }
+    }
+
+    /** True once the browser shows a page that does not carry the mark set just before the click. */
+    private boolean pageIsNew() {
+        try {
+            return script("return document.documentElement.getAttribute('data-nav-mark')") == null;
+        } catch (WebDriverException e) {
+            return false;   // the old page is being torn down; ask again
+        }
+    }
+
+    private Object script(String javascript) {
+        return ((JavascriptExecutor) driver).executeScript(javascript);
     }
 
     /** Waits until the browser URL matches the regular expression, then until that page has finished loading. */

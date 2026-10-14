@@ -67,7 +67,7 @@ final class TestServer {
         accessLog.setSuffix(".log");
         accessLog.setFileDateFormat("");
         accessLog.setBuffered(false);
-        accessLog.setPattern("%{HH:mm:ss.SSS}t %m %U%q -> %s in %D ms  session=%S");
+        accessLog.setPattern("%{HH:mm:ss.SSS}t %m %U%q -> %s in %D microseconds  session=%S");
         tomcat.getHost().getPipeline().addValve(accessLog);
 
         Context context = tomcat.addWebapp("/certificate-portal", war.getAbsolutePath());

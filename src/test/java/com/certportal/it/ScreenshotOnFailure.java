@@ -9,7 +9,8 @@ public class ScreenshotOnFailure implements TestExecutionExceptionHandler {
     @Override
     public void handleTestExecutionException(ExtensionContext context, Throwable throwable) throws Throwable {
         Object instance = context.getTestInstance().orElse(null);
-        if (instance instanceof BaseIT) {
+        boolean skipped = throwable instanceof org.opentest4j.TestAbortedException;   // a skipped test is not a failure
+        if (instance instanceof BaseIT && !skipped) {
             String name = context.getRequiredTestClass().getSimpleName() + "." + context.getRequiredTestMethod().getName();
             ((BaseIT) instance).captureFailure(name);
         }
