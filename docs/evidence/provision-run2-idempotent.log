@@ -42,7 +42,7 @@ TASK [certportal : Create this release's folder] *******************************
 ok: [portal-node]
 
 TASK [certportal : Store the WAR in the release archive] ***********************
-ok: [portal-node]
+changed: [portal-node]
 
 TASK [certportal : Read the marker of the release that is live now] ************
 ok: [portal-node]
@@ -54,7 +54,7 @@ TASK [certportal : Remember the previous release so it can be restored] ********
 skipping: [portal-node]
 
 TASK [certportal : Put the WAR where Tomcat deploys it] ************************
-ok: [portal-node]
+changed: [portal-node]
 
 TASK [certportal : Mark this release as the live one] **************************
 ok: [portal-node]
@@ -73,5 +73,5 @@ ok: [portal-node] =>
     msg: 'Health check passed: {"status":"UP","database":"UP","env":"staging","version":"1.0.0"}'
 
 PLAY RECAP *********************************************************************
-portal-node                : ok=19   changed=0    unreachable=0    failed=0    skipped=3    rescued=0    ignored=0   
+portal-node                : ok=19   changed=2    unreachable=0    failed=0    skipped=3    rescued=0    ignored=0   
 

@@ -1,2 +1,2 @@
 GET http://192.168.252.2:8080/certificate-portal/health
-{"status":"UP","database":"UP","env":"staging","version":"1.0.0"}
+{"status":"UP","database":"UP","env":"staging","version":"1.0.1"}
