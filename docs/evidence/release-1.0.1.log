@@ -1,0 +1,77 @@
+
+PLAY [Configure the Certificate Portal node] ***********************************
+
+TASK [Gathering Facts] *********************************************************
+[WARNING]: Host 'portal-node' is using the discovered Python interpreter at '/usr/bin/python3.12', but future installation of another Python interpreter could cause a different interpreter to be discovered. See https://docs.ansible.com/ansible-core/2.21/reference_appendices/interpreter_discovery.html for more information.
+ok: [portal-node]
+
+TASK [certportal : Install Java, Tomcat and curl] ******************************
+ok: [portal-node]
+
+TASK [certportal : Create the application user that owns the release archive] ***
+ok: [portal-node]
+
+TASK [certportal : Create the release archive folder] **************************
+ok: [portal-node] => (item=/opt/certportal)
+ok: [portal-node] => (item=/opt/certportal/releases)
+
+TASK [certportal : Create the database folder (writable by Tomcat)] ************
+ok: [portal-node]
+
+TASK [certportal : Create the systemd drop-in folder for Tomcat] ***************
+ok: [portal-node]
+
+TASK [certportal : Pass the environment label and data folder to Tomcat] *******
+ok: [portal-node]
+
+TASK [certportal : Flush handlers so Tomcat has the new settings before the deploy] ***
+
+TASK [certportal : Enable and start Tomcat] ************************************
+ok: [portal-node]
+
+TASK [certportal : Wait until Tomcat listens on its port] **********************
+ok: [portal-node]
+
+TASK [certportal : Check that the WAR exists on the control node] **************
+ok: [portal-node -> localhost]
+
+TASK [certportal : Stop if the WAR has not been built] *************************
+skipping: [portal-node]
+
+TASK [certportal : Create this release's folder] *******************************
+changed: [portal-node]
+
+TASK [certportal : Store the WAR in the release archive] ***********************
+changed: [portal-node]
+
+TASK [certportal : Read the marker of the release that is live now] ************
+ok: [portal-node]
+
+TASK [certportal : Work out which release is live now] *************************
+ok: [portal-node]
+
+TASK [certportal : Remember the previous release so it can be restored] ********
+changed: [portal-node]
+
+TASK [certportal : Put the WAR where Tomcat deploys it] ************************
+changed: [portal-node]
+
+TASK [certportal : Mark this release as the live one] **************************
+changed: [portal-node]
+
+TASK [certportal : Find old releases beyond the retention limit] ***************
+ok: [portal-node]
+
+TASK [certportal : Delete the oldest releases (never the live or previous one)] ***
+skipping: [portal-node]
+
+TASK [certportal : Wait for the application health endpoint] *******************
+ok: [portal-node]
+
+TASK [certportal : Report the health result] ***********************************
+ok: [portal-node] => 
+    msg: 'Health check passed: {"status":"UP","database":"UP","env":"staging","version":"1.0.0"}'
+
+PLAY RECAP *********************************************************************
+portal-node                : ok=20   changed=5    unreachable=0    failed=0    skipped=2    rescued=0    ignored=0   
+
