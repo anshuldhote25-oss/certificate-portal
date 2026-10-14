@@ -16,6 +16,15 @@
   </dl>
 
   <div class="actions">
+    <c:if test="${canEdit}">
+      <a class="button" href="${ctx}/certificates/${certificate.id}/edit" data-testid="edit-link">Edit</a>
+    </c:if>
+    <c:forEach var="a" items="${actions}">
+      <form method="post" action="${ctx}/certificates/${certificate.id}/${a.path}" class="inline">
+        <input type="hidden" name="_csrf" value="${sessionScope.csrf}">
+        <button type="submit" class="primary" data-testid="action-${a.path}"><c:out value="${a.label}"/></button>
+      </form>
+    </c:forEach>
     <a class="button" href="${ctx}/certificates" data-testid="back-link">Back to list</a>
   </div>
 </section>
