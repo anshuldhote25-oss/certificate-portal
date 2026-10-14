@@ -6,6 +6,7 @@ import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.time.Duration;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.UUID;
@@ -14,11 +15,16 @@ import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.openqa.selenium.By;
+import org.openqa.selenium.JavascriptExecutor;
 import org.openqa.selenium.OutputType;
 import org.openqa.selenium.TakesScreenshot;
 import org.openqa.selenium.WebDriver;
+import org.openqa.selenium.WebDriverException;
+import org.openqa.selenium.WebElement;
 import org.openqa.selenium.chrome.ChromeDriver;
 import org.openqa.selenium.chrome.ChromeOptions;
+import org.openqa.selenium.support.ui.ExpectedConditions;
+import org.openqa.selenium.support.ui.WebDriverWait;
 
 /**
  * Shared set-up for the Selenium tests: starts the application once, opens a fresh Chrome per test and
@@ -34,6 +40,7 @@ abstract class BaseIT {
 
     static String baseUrl;
     protected WebDriver driver;
+    protected WebDriverWait wait;
 
     @BeforeAll
     static void startApplication() throws Exception {
@@ -52,6 +59,7 @@ abstract class BaseIT {
             options.setBinary(binary);
         }
         driver = new ChromeDriver(options);
+        wait = new WebDriverWait(driver, Duration.ofSeconds(10));
     }
 
     @AfterEach
@@ -87,21 +95,46 @@ abstract class BaseIT {
         return By.cssSelector("[data-testid='" + id + "']");
     }
 
-    protected String text(String id) {
-        return driver.findElement(testId(id)).getText().trim();
+    /** Waits (up to 10 s) until the element is on the page and visible, then returns it. */
+    protected WebElement visible(By locator) {
+        return wait.until(ExpectedConditions.visibilityOfElementLocated(locator));
     }
 
+    protected String text(String id) {
+        return visible(testId(id)).getText().trim();
+    }
+
+    /** Immediate check, so call it only once the page has finished loading (click() and driver.get() make sure of that). */
     protected boolean exists(String id) {
         return !driver.findElements(testId(id)).isEmpty();
     }
 
     protected void type(By locator, String value) {
-        driver.findElement(locator).clear();
-        driver.findElement(locator).sendKeys(value);
+        WebElement field = visible(locator);
+        field.clear();
+        field.sendKeys(value);
     }
 
+    /**
+     * Clicks an element that navigates (a link or a submit button) and waits until the browser has left
+     * the old page and finished loading the next one. Without this wait the next step can run while the
+     * form post is still in flight, which makes tests fail at random.
+     */
     protected void click(String id) {
-        driver.findElement(testId(id)).click();
+        WebElement element = wait.until(ExpectedConditions.elementToBeClickable(testId(id)));
+        element.click();
+        wait.until(ExpectedConditions.stalenessOf(element));
+        waitForPageLoad();
+    }
+
+    protected void waitForPageLoad() {
+        wait.until(d -> {
+            try {
+                return "complete".equals(((JavascriptExecutor) d).executeScript("return document.readyState"));
+            } catch (WebDriverException e) {
+                return false;   // page is switching documents; try again
+            }
+        });
     }
 
     protected static String uniqueName(String prefix) {
@@ -116,6 +149,7 @@ abstract class BaseIT {
         type(By.id("username"), username);
         type(By.id("password"), username + "123");
         click("login-submit");
+        wait.until(ExpectedConditions.urlContains("/dashboard"));
     }
 
     /** Creates a draft certificate (user must be logged in as operator/admin) and returns the view-page URL. */
@@ -127,6 +161,7 @@ abstract class BaseIT {
         type(By.id("issueDate"), java.time.LocalDate.now().toString());
         type(By.id("remarks"), "Created by Selenium");
         click("save");
+        wait.until(ExpectedConditions.urlMatches(".*/certificates/\\d+$"));
         return driver.getCurrentUrl();
     }
 }
