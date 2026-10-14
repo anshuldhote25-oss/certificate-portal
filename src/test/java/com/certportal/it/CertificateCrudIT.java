@@ -28,6 +28,7 @@ class CertificateCrudIT extends BaseIT {
         driver.get(baseUrl + "/certificates/new");
         type(By.id("recipientEmail"), "not-an-email");
         click("save");
+        visible(testId("error-recipientName"));
 
         assertTrue(exists("error-recipientName"));
         assertTrue(exists("error-recipientEmail"));
@@ -42,8 +43,10 @@ class CertificateCrudIT extends BaseIT {
         createCertificate(uniqueName("Edit "), "Git Basics");
 
         click("edit-link");
+        awaitUrl(".*/edit$");
         type(By.id("course"), "Advanced Git");
         click("save");
+        awaitTextContains("flash", "updated");
 
         assertTrue(text("flash").contains("updated"));
         assertEquals("Advanced Git", text("course"));

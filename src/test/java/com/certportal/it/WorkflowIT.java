@@ -15,17 +15,17 @@ class WorkflowIT extends BaseIT {
         String url = createCertificate(uniqueName("Flow "), "Jenkins Pipelines");
         assertEquals("Draft", text("status"));
         click("action-submit");
-        assertEquals("Submitted", text("status"));
+        awaitText("status", "Submitted");
 
         loginAs("approver");
         driver.get(url);
         click("action-approve");
-        assertEquals("Approved", text("status"));
+        awaitText("status", "Approved");
 
         loginAs("admin");
         driver.get(url);
         click("action-issue");
-        assertEquals("Issued", text("status"));
+        awaitText("status", "Issued");
         assertFalse(exists("action-submit"), "No further actions once issued");
         assertFalse(exists("edit-link"), "Issued records cannot be edited");
     }
@@ -35,17 +35,18 @@ class WorkflowIT extends BaseIT {
         loginAs("operator");
         String url = createCertificate(uniqueName("Reject "), "Ansible Basics");
         click("action-submit");
+        awaitText("status", "Submitted");
 
         loginAs("approver");
         driver.get(url);
         click("action-reject");
-        assertEquals("Rejected", text("status"));
+        awaitText("status", "Rejected");
 
         loginAs("operator");
         driver.get(url);
         assertTrue(exists("edit-link"), "Rejected records are editable");
         click("action-submit");
-        assertEquals("Submitted", text("status"));
+        awaitText("status", "Submitted");
     }
 
     @Test
@@ -53,6 +54,7 @@ class WorkflowIT extends BaseIT {
         loginAs("operator");
         String url = createCertificate(uniqueName("Perm "), "Selenium Testing");
         click("action-submit");
+        awaitText("status", "Submitted");
         driver.get(url);
         assertEquals("Submitted", text("status"));
         assertFalse(exists("action-approve"));

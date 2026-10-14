@@ -23,6 +23,7 @@ class LoginIT extends BaseIT {
         type(By.id("username"), "operator");
         type(By.id("password"), "not-the-password");
         click("login-submit");
+        visible(testId("login-error"));
         assertTrue(text("login-error").contains("Invalid username or password"));
         assertTrue(driver.getCurrentUrl().endsWith("/login"));
     }
@@ -39,6 +40,7 @@ class LoginIT extends BaseIT {
     void logoutEndsTheSession() {
         loginAs("admin");
         click("logout");
+        awaitUrl(".*/login$");
         driver.get(baseUrl + "/dashboard");
         assertTrue(driver.getCurrentUrl().endsWith("/login"));
     }

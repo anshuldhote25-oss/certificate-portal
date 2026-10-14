@@ -21,6 +21,7 @@ class SearchIT extends BaseIT {
         driver.get(baseUrl + "/certificates");
         type(By.cssSelector("[data-testid='search-input']"), name.toLowerCase());
         click("search-submit");
+        awaitText("result-count", "1 record(s) found");
 
         List<WebElement> rows = driver.findElements(testId("cert-row"));
         assertEquals(1, rows.size(), "Exactly one record should match");
@@ -33,6 +34,7 @@ class SearchIT extends BaseIT {
         driver.get(baseUrl + "/certificates");
         type(By.cssSelector("[data-testid='search-input']"), "zzz-no-such-record-" + System.nanoTime());
         click("search-submit");
+        visible(testId("empty-state"));
 
         assertTrue(exists("empty-state"));
         assertTrue(text("result-count").startsWith("0 record"));
@@ -44,6 +46,7 @@ class SearchIT extends BaseIT {
         driver.get(baseUrl + "/certificates");
         new Select(driver.findElement(testId("status-filter"))).selectByValue("ISSUED");
         click("search-submit");
+        awaitUrl(".*status=ISSUED.*");
 
         List<WebElement> rows = driver.findElements(testId("cert-row"));
         assertTrue(rows.size() >= 1, "The demo data contains at least one issued certificate");

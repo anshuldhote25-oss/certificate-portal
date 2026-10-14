@@ -1,10 +1,17 @@
 package com.certportal.it;
 
 import java.io.File;
+import java.net.CookieManager;
+import java.net.URI;
+import java.net.http.HttpClient;
+import java.net.http.HttpRequest;
+import java.net.http.HttpResponse;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.time.Duration;
 import org.apache.catalina.Context;
 import org.apache.catalina.startup.Tomcat;
+import org.apache.catalina.valves.AccessLogValve;
 
 /**
  * Gives the Selenium tests a running application.
@@ -49,6 +56,20 @@ final class TestServer {
         tomcat.setBaseDir(work.toString());
         tomcat.setPort(0);
         tomcat.getConnector();
+
+        // One line per request in target/it-access.log: time, method, URL, status, milliseconds, session id.
+        // If a Selenium test ever fails, this shows whether the browser's request reached the server.
+        File logDir = new File("target").getAbsoluteFile();
+        logDir.mkdirs();
+        AccessLogValve accessLog = new AccessLogValve();
+        accessLog.setDirectory(logDir.getPath());
+        accessLog.setPrefix("it-access");
+        accessLog.setSuffix(".log");
+        accessLog.setFileDateFormat("");
+        accessLog.setBuffered(false);
+        accessLog.setPattern("%{HH:mm:ss.SSS}t %m %U%q -> %s in %D ms  session=%S");
+        tomcat.getHost().getPipeline().addValve(accessLog);
+
         Context context = tomcat.addWebapp("/certificate-portal", war.getAbsolutePath());
         tomcat.start();
 
@@ -57,8 +78,42 @@ final class TestServer {
         }
         baseUrl = "http://localhost:" + tomcat.getConnector().getLocalPort() + "/certificate-portal";
         System.out.println("[TestServer] Embedded Tomcat started at " + baseUrl);
+        warmUp(baseUrl);
         Runtime.getRuntime().addShutdownHook(new Thread(TestServer::stop));
         return baseUrl;
+    }
+
+    /**
+     * The first request to each JSP makes Tomcat compile it, which can take a couple of seconds on a laptop.
+     * Visiting every page once before the browser tests start keeps those one-off delays out of the tests.
+     */
+    private static void warmUp(String base) {
+        try {
+            HttpClient http = HttpClient.newBuilder()
+                    .cookieHandler(new CookieManager())
+                    .followRedirects(HttpClient.Redirect.NEVER)
+                    .connectTimeout(Duration.ofSeconds(10))
+                    .build();
+            get(http, base + "/login");
+            HttpRequest login = HttpRequest.newBuilder(URI.create(base + "/login"))
+                    .header("Content-Type", "application/x-www-form-urlencoded")
+                    .POST(HttpRequest.BodyPublishers.ofString("username=admin&password=admin123"))
+                    .timeout(Duration.ofSeconds(60))
+                    .build();
+            http.send(login, HttpResponse.BodyHandlers.discarding());
+            for (String path : new String[] {"/dashboard", "/certificates", "/certificates?q=a&status=ISSUED",
+                    "/certificates/new", "/certificates/1", "/certificates/1/edit", "/certificates/999999"}) {
+                get(http, base + path);
+            }
+            System.out.println("[TestServer] Pages pre-compiled.");
+        } catch (Exception e) {
+            System.out.println("[TestServer] Warm-up skipped: " + e);
+        }
+    }
+
+    private static void get(HttpClient http, String url) throws Exception {
+        http.send(HttpRequest.newBuilder(URI.create(url)).timeout(Duration.ofSeconds(60)).GET().build(),
+                HttpResponse.BodyHandlers.discarding());
     }
 
     private static synchronized void stop() {
