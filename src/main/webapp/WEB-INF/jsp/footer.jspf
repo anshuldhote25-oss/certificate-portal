@@ -1,7 +1,7 @@
 </main>
 <footer>
   <span data-testid="env-badge">Environment: <c:out value="${applicationScope.appEnv}"/></span>
-  <span>Version <c:out value="${applicationScope.appVersion}"/></span>
+  <span>Release <c:out value="${applicationScope.appVersion}"/></span>
 </footer>
 </body>
 </html>
