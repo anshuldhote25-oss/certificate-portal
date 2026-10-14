@@ -82,7 +82,7 @@ pipeline {
                     '''
                 }
                 sh '''
-                    curl --fail --silent --show-error --retry 15 --retry-delay 3 --retry-connrefused \
+                    curl --fail --silent --show-error --retry 15 --retry-delay 3 --retry-all-errors --retry-connrefused \
                          "${TOMCAT_URL}/certificate-portal/health"
                 '''
             }
@@ -122,7 +122,7 @@ pipeline {
                     docker run -d --name ${CONTAINER_NAME} --restart unless-stopped \
                         -p ${CONTAINER_PORT}:8080 -v certportal-data:/data \
                         -e APP_ENV=${DEPLOY_ENV} ${DOCKER_REPO}:${IMAGE_TAG}
-                    curl --fail --silent --show-error --retry 20 --retry-delay 3 --retry-connrefused \
+                    curl --fail --silent --show-error --retry 20 --retry-delay 3 --retry-all-errors --retry-connrefused \
                          http://localhost:${CONTAINER_PORT}/certificate-portal/health
                 '''
             }
