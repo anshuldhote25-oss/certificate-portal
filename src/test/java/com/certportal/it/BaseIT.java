@@ -18,6 +18,7 @@ import org.openqa.selenium.By;
 import org.openqa.selenium.JavascriptExecutor;
 import org.openqa.selenium.OutputType;
 import org.openqa.selenium.TakesScreenshot;
+import org.openqa.selenium.TimeoutException;
 import org.openqa.selenium.WebDriver;
 import org.openqa.selenium.WebDriverException;
 import org.openqa.selenium.WebElement;
@@ -133,11 +134,46 @@ abstract class BaseIT {
      */
     protected void click(String id) {
         WebElement element = waiter().until(ExpectedConditions.elementToBeClickable(testId(id)));
+        awaitPaint();
         script("document.documentElement.setAttribute('data-nav-mark', '1')");
         element.click();
+
+        if (!changedWithin(4)) {
+            try {
+                if (!pageIsNew()) {
+                    System.out.println("[Retry] clicking '" + id + "' had no effect after 4 s; clicking again");
+                    element.click();
+                }
+            } catch (WebDriverException e) {
+                // the old element is gone, so the page did change after all
+            }
+        }
         waiter().withMessage("the page did not change after clicking '" + id + "'")
                 .until(d -> pageIsNew());
         waitForPageLoad();
+    }
+
+    private boolean changedWithin(int seconds) {
+        try {
+            new WebDriverWait(driver, Duration.ofSeconds(seconds)).until(d -> pageIsNew());
+            return true;
+        } catch (TimeoutException e) {
+            return false;
+        }
+    }
+
+    /** Lets the browser draw the page before we click (two animation frames, or 0.5 s at most). */
+    private void awaitPaint() {
+        try {
+            ((JavascriptExecutor) driver).executeAsyncScript(
+                    "var done = arguments[arguments.length - 1];"
+                    + "var finished = false;"
+                    + "function finish() { if (!finished) { finished = true; done(true); } }"
+                    + "requestAnimationFrame(function () { requestAnimationFrame(finish); });"
+                    + "setTimeout(finish, 500);");
+        } catch (WebDriverException e) {
+            // not essential; carry on
+        }
     }
 
     private boolean pageIsNew() {
