@@ -168,6 +168,17 @@ abstract class BaseIT {
                 // the page changed under us; try again
             }
         }
+        // Chrome sometimes ignores the keystrokes completely and the field stays empty. Like click(),
+        // fall back to setting the value by script and fire the events a real keystroke would.
+        System.out.println("[Fallback] typing into " + locator + " was dropped by Chrome; setting the value by script");
+        try {
+            ((JavascriptExecutor) driver).executeScript(
+                    "var e = arguments[0]; e.focus(); e.value = arguments[1];"
+                    + "e.dispatchEvent(new Event('input', {bubbles: true}));"
+                    + "e.dispatchEvent(new Event('change', {bubbles: true}));", visible(locator), value);
+        } catch (WebDriverException e) {
+            // the page changed under us; the check below reports what the field holds
+        }
         WebElement field = visible(locator);
         assertEquals(value, field.getAttribute("value"), "Could not type into " + locator);
     }

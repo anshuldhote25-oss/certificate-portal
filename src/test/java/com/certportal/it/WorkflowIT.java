@@ -39,6 +39,7 @@ class WorkflowIT extends BaseIT {
 
         loginAs("approver");
         driver.get(url);
+        type(testId("reject-reason"), "Course name does not match the syllabus");
         click("action-reject");
         awaitText("status", "Rejected");
 
@@ -47,6 +48,31 @@ class WorkflowIT extends BaseIT {
         assertTrue(exists("edit-link"), "Rejected records are editable");
         click("action-submit");
         awaitText("status", "Submitted");
+        assertFalse(exists("rejection-reason"), "The old reason is not shown once the record is resubmitted");
+    }
+
+    @Test
+    void rejectionNeedsAReasonAndTheOperatorSeesIt() {
+        loginAs("operator");
+        String url = createCertificate(uniqueName("Why "), "Docker Basics");
+        click("action-submit");
+        awaitText("status", "Submitted");
+
+        loginAs("approver");
+        driver.get(url);
+        click("action-reject");                       // no reason typed
+        awaitTextContains("error-reason", "reason");
+        assertEquals("Submitted", text("status"), "A rejection without a reason changes nothing");
+
+        String reason = "Recipient email is a personal address; use the college email";
+        type(testId("reject-reason"), reason);
+        click("action-reject");
+        awaitText("status", "Rejected");
+        assertEquals(reason, text("rejection-reason"));
+
+        loginAs("operator");
+        driver.get(url);
+        assertEquals(reason, text("rejection-reason"), "The operator can read why it was rejected");
     }
 
     @Test
@@ -59,6 +85,7 @@ class WorkflowIT extends BaseIT {
         assertEquals("Submitted", text("status"));
         assertFalse(exists("action-approve"));
         assertFalse(exists("action-reject"));
+        assertFalse(exists("reject-reason"), "Operators do not get the rejection box");
     }
 
     @Test

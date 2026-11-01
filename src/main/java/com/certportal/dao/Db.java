@@ -48,6 +48,8 @@ public final class Db {
                     + "updated_by VARCHAR(50) NOT NULL,"
                     + "created_at TIMESTAMP NOT NULL,"
                     + "updated_at TIMESTAMP NOT NULL)");
+            // Added later: databases created by an older version get the column on start-up.
+            s.execute("ALTER TABLE certificates ADD COLUMN IF NOT EXISTS rejection_reason VARCHAR(500)");
         }
     }
 }

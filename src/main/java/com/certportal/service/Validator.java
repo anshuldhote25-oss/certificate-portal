@@ -42,6 +42,18 @@ public final class Validator {
         return errors;
     }
 
+    public static final int MIN_REASON = 5;
+    public static final int MAX_REASON = 500;
+
+    /** Returns an error message for a rejection reason, or null when it is acceptable. */
+    public static String validateRejectionReason(String reason) {
+        String r = reason == null ? "" : reason.trim();
+        if (r.length() < MIN_REASON || r.length() > MAX_REASON) {
+            return "Give a reason for the rejection (" + MIN_REASON + " to " + MAX_REASON + " characters).";
+        }
+        return null;
+    }
+
     /** Parses an ISO date, returning null when the text is blank or malformed. */
     public static LocalDate parseDate(String text) {
         if (text == null || text.isBlank()) {

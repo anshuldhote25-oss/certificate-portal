@@ -36,6 +36,17 @@ class ValidatorTest {
     }
 
     @Test
+    void rejectionReasonMustBeBetweenFiveAndFiveHundredCharacters() {
+        assertNull(Validator.validateRejectionReason("Email is wrong"));
+        assertNull(Validator.validateRejectionReason("  Wrong course  "));
+        assertNull(Validator.validateRejectionReason("x".repeat(500)));
+        assertTrue(Validator.validateRejectionReason(null).contains("reason"));
+        assertTrue(Validator.validateRejectionReason("   ").contains("reason"));
+        assertTrue(Validator.validateRejectionReason("no").contains("reason"));
+        assertTrue(Validator.validateRejectionReason("x".repeat(501)).contains("reason"));
+    }
+
+    @Test
     void nullInputsDoNotThrow() {
         assertEquals(4, Validator.validate(null, null, null, null).size());
     }

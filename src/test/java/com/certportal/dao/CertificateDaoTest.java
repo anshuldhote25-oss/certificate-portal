@@ -87,6 +87,21 @@ class CertificateDaoTest {
     }
 
     @Test
+    void rejectionReasonIsStoredAndClearedWhenTheRecordMovesOn() throws Exception {
+        long id = dao.create(sample("Reason Test", "DevOps"), "operator");
+        assertNull(dao.findById(id).getRejectionReason());
+
+        dao.updateStatus(id, Status.SUBMITTED, "operator");
+        dao.updateStatus(id, Status.REJECTED, "approver", "Wrong course name");
+        Certificate rejected = dao.findById(id);
+        assertEquals(Status.REJECTED, rejected.getStatus());
+        assertEquals("Wrong course name", rejected.getRejectionReason());
+
+        dao.updateStatus(id, Status.SUBMITTED, "operator");
+        assertNull(dao.findById(id).getRejectionReason(), "Resubmitting clears the old reason");
+    }
+
+    @Test
     void usersAuthenticateWithTheirPasswordOnly() throws Exception {
         UserDao users = new UserDao();
         String name = "user" + UUID.randomUUID().toString().substring(0, 8);

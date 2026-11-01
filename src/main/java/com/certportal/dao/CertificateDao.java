@@ -20,7 +20,7 @@ import java.util.Map;
 public class CertificateDao {
 
     private static final String COLUMNS = "id, cert_no, recipient_name, recipient_email, course, issue_date, "
-            + "status, remarks, created_by, updated_by, created_at, updated_at";
+            + "status, remarks, rejection_reason, created_by, updated_by, created_at, updated_at";
 
     /** Inserts a new DRAFT record and returns its generated id. The certificate number is assigned here. */
     public long create(Certificate cert, String username) throws SQLException {
@@ -117,12 +117,21 @@ public class CertificateDao {
     }
 
     public void updateStatus(long id, Status status, String username) throws SQLException {
-        String sql = "UPDATE certificates SET status = ?, updated_by = ?, updated_at = ? WHERE id = ?";
+        updateStatus(id, status, username, null);
+    }
+
+    /**
+     * Changes the status. The rejection reason is stored with the new status; pass null for every
+     * transition except a rejection, so an old reason never stays on a record that is no longer rejected.
+     */
+    public void updateStatus(long id, Status status, String username, String rejectionReason) throws SQLException {
+        String sql = "UPDATE certificates SET status = ?, rejection_reason = ?, updated_by = ?, updated_at = ? WHERE id = ?";
         try (Connection c = Db.get(); PreparedStatement ps = c.prepareStatement(sql)) {
             ps.setString(1, status.name());
-            ps.setString(2, username);
-            ps.setTimestamp(3, Timestamp.valueOf(LocalDateTime.now()));
-            ps.setLong(4, id);
+            ps.setString(2, rejectionReason);
+            ps.setString(3, username);
+            ps.setTimestamp(4, Timestamp.valueOf(LocalDateTime.now()));
+            ps.setLong(5, id);
             ps.executeUpdate();
         }
     }
@@ -171,6 +180,7 @@ public class CertificateDao {
         c.setIssueDate(rs.getDate("issue_date").toLocalDate());
         c.setStatus(Status.valueOf(rs.getString("status")));
         c.setRemarks(rs.getString("remarks"));
+        c.setRejectionReason(rs.getString("rejection_reason"));
         c.setCreatedBy(rs.getString("created_by"));
         c.setUpdatedBy(rs.getString("updated_by"));
         c.setCreatedAt(rs.getTimestamp("created_at").toLocalDateTime());

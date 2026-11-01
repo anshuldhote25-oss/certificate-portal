@@ -47,3 +47,8 @@ dl { display:grid; grid-template-columns:160px 1fr; gap:6px 12px; margin:0; }
 dt { color:var(--muted); }
 dd { margin:0; }
 footer { text-align:center; color:var(--muted); font-size:12px; padding:24px; display:flex; justify-content:center; gap:20px; }
+
+.reject-form { margin-top:24px; padding-top:16px; border-top:1px solid #e5e7eb; max-width:560px; }
+.reject-form label { display:block; font-weight:600; margin-bottom:6px; }
+button.danger { background:#b42318; border-color:#b42318; color:#fff; }
+dd.reason { background:#fef3f2; border-left:3px solid #b42318; padding:6px 10px; white-space:pre-wrap; }

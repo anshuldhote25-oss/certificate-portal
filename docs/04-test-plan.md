@@ -24,6 +24,7 @@ Five critical user journeys of the Certificate Generation Portal, tested through
 | | | statusFilterShowsOnlyRecordsWithThatStatus | status = Issued | every row shows Issued |
 | 4 Workflow | `WorkflowIT` | certificateTravelsFromDraftToIssuedAcrossThreeRoles | operator, approver, admin | Draft -> Submitted -> Approved -> Issued; no actions left |
 | | | rejectedCertificateCanBeEditedAndResubmitted | operator, approver | Rejected record editable, resubmit gives Submitted |
+| | | rejectionNeedsAReasonAndTheOperatorSeesIt | operator, approver | Reject without a reason changes nothing and shows an error; with a reason the Rejected record shows it to the operator |
 | | | operatorHasNoApproveButton | operator | approve/reject buttons absent |
 | | | approverCannotCreateCertificates | approver | no "New certificate" link; direct URL gives 403 |
 | 5 Dashboard | `DashboardIT` | totalEqualsTheSumOfAllStatusCounts | demo data | total equals sum of five counts |

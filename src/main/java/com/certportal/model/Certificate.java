@@ -13,6 +13,7 @@ public class Certificate {
     private LocalDate issueDate;
     private Status status = Status.DRAFT;
     private String remarks;
+    private String rejectionReason;
     private String createdBy;
     private String updatedBy;
     private LocalDateTime createdAt;
@@ -41,6 +42,10 @@ public class Certificate {
 
     public String getRemarks() { return remarks; }
     public void setRemarks(String remarks) { this.remarks = remarks; }
+
+    /** Why the approver rejected the record; only set while the status is REJECTED. */
+    public String getRejectionReason() { return rejectionReason; }
+    public void setRejectionReason(String rejectionReason) { this.rejectionReason = rejectionReason; }
 
     public String getCreatedBy() { return createdBy; }
     public void setCreatedBy(String createdBy) { this.createdBy = createdBy; }

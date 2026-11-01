@@ -26,7 +26,7 @@ import java.util.Map;
  * GET  /certificates/{id}            view
  * GET  /certificates/{id}/edit       edit form
  * POST /certificates/{id}            update
- * POST /certificates/{id}/{action}   submit | approve | reject | issue
+ * POST /certificates/{id}/{action}   submit | approve | reject (needs a reason) | issue
  * </pre>
  */
 @WebServlet("/certificates/*")
@@ -126,6 +126,11 @@ public class CertificateServlet extends HttpServlet {
             resp.sendError(HttpServletResponse.SC_NOT_FOUND, "Certificate not found.");
             return;
         }
+        forwardToView(req, resp, cert);
+    }
+
+    private void forwardToView(HttpServletRequest req, HttpServletResponse resp, Certificate cert)
+            throws ServletException, IOException {
         User user = user(req);
         req.setAttribute("certificate", cert);
         req.setAttribute("actions", Workflow.availableActions(user.getRole(), cert.getStatus()));
@@ -187,7 +192,7 @@ public class CertificateServlet extends HttpServlet {
     }
 
     private void transition(HttpServletRequest req, HttpServletResponse resp, long id, String actionPath)
-            throws SQLException, IOException {
+            throws SQLException, ServletException, IOException {
         Action action = Action.fromPath(actionPath);
         if (action == null) {
             resp.sendError(HttpServletResponse.SC_NOT_FOUND, "Unknown action.");
@@ -209,7 +214,19 @@ public class CertificateServlet extends HttpServlet {
                     "Cannot " + action.getPath() + " a certificate that is " + cert.getStatus().getLabel().toLowerCase() + ".");
             return;
         }
-        dao.updateStatus(id, next, user.getUsername());
+        String reason = null;
+        if (action == Action.REJECT) {
+            reason = trim(req.getParameter("reason"));
+            String error = Validator.validateRejectionReason(reason);
+            if (error != null) {
+                // Nothing is saved: show the record again with the message and what the approver typed.
+                req.setAttribute("reasonError", error);
+                req.setAttribute("reasonText", reason);
+                forwardToView(req, resp, cert);
+                return;
+            }
+        }
+        dao.updateStatus(id, next, user.getUsername(), reason);
         flash(req, "Status changed to " + next.getLabel() + ".");
         resp.sendRedirect(req.getContextPath() + "/certificates/" + id);
     }

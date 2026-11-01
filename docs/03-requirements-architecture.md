@@ -14,6 +14,7 @@
 | FR-08 | The system shall enforce the status workflow and the role permissions in the table below |
 | FR-09 | The system shall show a dashboard with the total and a count for each status |
 | FR-10 | The system shall expose `/health` returning HTTP 200 and JSON when the database is reachable |
+| FR-11 | Rejecting a certificate shall require a written reason (5-500 characters), stored with the record and shown to everyone who views it while it is Rejected |
 
 ### Workflow and permissions
 | Action | From status | To status | Allowed roles |
@@ -117,7 +118,7 @@ erDiagram
 | POST | `/certificates/{id}` | Update | Operator, Admin (Draft/Rejected) |
 | POST | `/certificates/{id}/submit` | Submit | Operator, Admin |
 | POST | `/certificates/{id}/approve` | Approve | Approver, Admin |
-| POST | `/certificates/{id}/reject` | Reject | Approver, Admin |
+| POST | `/certificates/{id}/reject` | Reject; form field `reason` (5-500 characters) is required | Approver, Admin |
 | POST | `/certificates/{id}/issue` | Issue | Admin |
 | GET | `/health` | Health check (JSON) | public |
 
